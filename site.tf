@@ -17,15 +17,58 @@ provider "aws" {
 }
 
 #IAM 
-S3_access 
+ 
+#S3access
 
-#Create S3 bucket
-resource "aws_s3_bucket" "b" {
+resource "aws_iam_instance_profile" "s3access" {
+    name = "s3access"
+    roles = ["${aws_iam_role.s3_access.name}"]
+}
+
+resource "aws_iam_role_policy" "s3access_policy" {
+    name = "s3access_policy"
+    role = "${aws_iam_role.s3access.id}"
+    policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "s3:*",
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role" "s3access" {
+    name = "s3access"
+    assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+  {
+      "Action": "sts:AssumeRole",
+      "Principal": {
+        "Service": "ec2.amazonaws.com"
+  },
+      "Effect": "Allow",
+      "Sid": ""
+      }
+    ]
+}
+EOF
+}
+
+#S3 test bucket
+
+resource "aws_s3_bucket" "test_b" {
   bucket = "${var.bucket_name}"
-  acl    = "public"
-
+  acl = "private"
+  force_destroy = true
   tags {
-    Name        = "az-test-bucket"
+    Name = "test bucket"
   }
 }
 
@@ -33,7 +76,19 @@ resource "aws_launch_configuration" "as_conf" {
   name_prefix   = "az-test-lc-"
   image_id      = "${aws_ami}"
   instance_type = "t2.micro"
+  iam_instance_profile = "${aws_iam_instance_profile.s3access.id}"
+  user_data = <<-EOF
+    #!/bin/bash
 
+    url=http://169.254.169.254/latest/meta-data
+    instance_hostname = `curl -s $url/public-hostname`
+    for i in ami-id instance-id instance-type hostname local-ipv4 public-hostname public-ipv4; do 
+      printf "%-15s%-20s\n" $i `curl -s $url/$i` >> $instane_hostname-instance_info.txt
+    done
+
+    aws s3 cp instance_info.txt s3://${var.bucket_name}/${var.outfile} --acl public-read
+    EOF
+    
   lifecycle {
     create_before_destroy = true
   }
