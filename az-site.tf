@@ -82,11 +82,10 @@ resource "aws_launch_configuration" "as_conf" {
 
     url=http://169.254.169.254/latest/meta-data
     instance_hostname = `curl -s $url/public-hostname`
-    for i in ami-id instance-id instance-type hostname local-ipv4 public-hostname public-ipv4; do 
-      printf "%-15s%-20s\n" $i `curl -s $url/$i` >> $instane_hostname-instance_info.txt
-    done
+    for i in ami-id instance-id instance-type hostname local-ipv4 public-hostname public-ipv4; do
+        printf "%-15s%-20s\n" $i `curl -s $url/$i` >> ${instance_hostname}_instance_info.txt; done
 
-    aws s3 cp instance_info.txt s3://${var.bucket_name}/${var.outfile} --acl public-read
+    aws s3 cp ${instance_hostname}_instance_info.txt s3://${var.bucket_name}/${instance_hostname}_instance_info.txt --acl public-read
     EOF
     
   lifecycle {
@@ -94,11 +93,11 @@ resource "aws_launch_configuration" "as_conf" {
   }
 }
 
-resource "aws_autoscaling_group" "bar" {
+resource "aws_autoscaling_group" "az_test_asg" {
   name                 = "az-test-asg"
   launch_configuration = "${aws_launch_configuration.as_conf.name}"
   min_size             = 1
-  max_size             = 2
+  max_size             = 1
 
   lifecycle {
     create_before_destroy = true
