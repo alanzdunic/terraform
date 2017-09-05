@@ -18,12 +18,7 @@ provider "aws" {
 
 #IAM 
  
-#S3access
-
-resource "aws_iam_instance_profile" "s3access" {
-    name = "s3access"
-    roles = ["${aws_iam_role.s3_access.name}"]
-}
+#Setup S3access
 
 resource "aws_iam_role_policy" "s3access_policy" {
     name = "s3access_policy"
@@ -61,14 +56,26 @@ resource "aws_iam_role" "s3access" {
 EOF
 }
 
-#S3 test bucket
+resource "aws_iam_policy_attachment" "policy_attach" {
+  name       = "policy_attachment"
+  roles      = ["${aws_iam_role.instance.name}"]
+  policy_arn = "${aws_iam__role_policy.policy.arn}"
+}
+
+resource "aws_iam_instance_profile" "s3access" {
+    name = "s3access"
+    roles = ["${aws_iam_role.s3access.name}"]
+}
+
+
+#Create S3 test bucket
 
 resource "aws_s3_bucket" "test_b" {
   bucket = "${var.bucket_name}"
   acl = "private"
   force_destroy = true
   tags {
-    Name = "test bucket"
+    Name = "az test bucket"
   }
 }
 
