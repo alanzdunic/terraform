@@ -9,12 +9,14 @@
 
     Some assumptions have been made:
       - An account with AWS defaults (VPC, security group, etc) is being used.
+      - The user running terraform has privileges to create the necessary resources.
       - The bucket name provided as an argument is globally unique. If it is not,
-        the 'terraform plan' will succeed but the 'apply' will fail. 
-      - Only one instance is required in the auto-scaling group. Additional
-        instances can be created, however the file in S3 will be overwritten.
+        the 'terraform plan' will succeed but the 'apply' will fail to create a bucket.
+      - The file in the S3 bucket will contain the details of the most recent instance
+        created by the auto-scaling group (it gets overwritten by each new instance)
       - No ssh access to the instance is required - no key pair is configured and
         no rules added to the security group.
+
 */
 
 
@@ -47,7 +49,7 @@ variable "aws_region" {
 
 variable "outfile" {
   description = "Name of output file copied to S3 bucket"
-  default     = "instance_details.txt"
+  default     = "latest_instance_details.txt"
 }
 
 # Build the URL for our s3 file and provide as output
@@ -114,6 +116,7 @@ resource "aws_launch_configuration" "ae-test" {
   instance_type        = "t2.micro"
   iam_instance_profile = "${aws_iam_instance_profile.profile.name}"
 
+
   user_data = <<-EOF
     #!/bin/bash
 
@@ -122,6 +125,7 @@ resource "aws_launch_configuration" "ae-test" {
       printf "%-15s%-20s\n" $i `curl -s $url/$i` >> ${var.outfile}
     done
 
+    sleep 30 # crude way to wait for dependencies to be satisfied
     aws s3 cp ${var.outfile} s3://${var.bucket_name}/${var.outfile} --acl public-read
     EOF
 
