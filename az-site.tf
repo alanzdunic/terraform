@@ -8,6 +8,9 @@ variable "bucket_name" {}
 variable "aws_ami" {
     default = "ami-30041c53"
 }
+variable "instance_profile" {
+    default = "S3access"
+}
 
 #Provider
 provider "aws" {
@@ -15,59 +18,7 @@ provider "aws" {
     secret_key = "${var.secret_key}"
     region = "${var.region}"
 }
-
-#IAM 
  
-#Setup S3access
-
-resource "aws_iam_role_policy" "s3access_policy" {
-    name = "s3access_policy"
-    role = "${aws_iam_role.s3access.id}"
-    policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": "s3:*",
-      "Resource": "*"
-    }
-  ]
-}
-EOF
-}
-
-resource "aws_iam_role" "s3access" {
-    name = "s3access"
-    assume_role_policy = <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-  {
-      "Action": "sts:AssumeRole",
-      "Principal": {
-        "Service": "ec2.amazonaws.com"
-  },
-      "Effect": "Allow",
-      "Sid": ""
-      }
-    ]
-}
-EOF
-}
-
-resource "aws_iam_policy_attachment" "policy_attach" {
-  name       = "policy_attachment"
-  roles      = ["${aws_iam_role.instance.name}"]
-  policy_arn = "${aws_iam__role_policy.policy.arn}"
-}
-
-resource "aws_iam_instance_profile" "s3access" {
-    name = "s3access"
-    roles = ["${aws_iam_role.s3access.name}"]
-}
-
-
 #Create S3 test bucket
 
 resource "aws_s3_bucket" "test_b" {
@@ -83,7 +34,7 @@ resource "aws_launch_configuration" "as_conf" {
   name_prefix   = "az-test-lc-"
   image_id      = "${aws_ami}"
   instance_type = "t2.micro"
-  iam_instance_profile = "${aws_iam_instance_profile.s3access.id}"
+  iam_instance_profile = "${var.instance_profile}"
   user_data = <<-EOF
     #!/bin/bash
 
